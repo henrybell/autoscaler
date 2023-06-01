@@ -31,6 +31,11 @@ variable "kubernetes_version" {
   default     = "1.23"
 }
 
+variable "kubernetes_namespace" {
+  description = "Namespace for Autoscaler resources"
+  default     = "spanner-autoscaler"
+}
+
 variable "ip_range_master" {
   description = "The range for the private master"
 }

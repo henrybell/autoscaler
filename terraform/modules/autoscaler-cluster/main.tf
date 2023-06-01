@@ -105,14 +105,14 @@ provider "kubernetes" {
 
 resource "kubernetes_namespace" "autoscaler_namespace" {
   metadata {
-    name = "spanner-autoscaler"
+    name = var.kubernetes_namespace
   }
 }
 
 module "workload_identity_poller" {
   source              = "terraform-google-modules/kubernetes-engine/google//modules/workload-identity"
   project_id          = var.project_id
-  namespace           = "spanner-autoscaler"
+  namespace           = kubernetes_namespace.autoscaler_namespace.id
   use_existing_k8s_sa = false
   use_existing_gcp_sa = true
   name                = local.poller_sa_name
@@ -122,7 +122,7 @@ module "workload_identity_poller" {
 module "workload_identity_scaler" {
   source              = "terraform-google-modules/kubernetes-engine/google//modules/workload-identity"
   project_id          = var.project_id
-  namespace           = "spanner-autoscaler"
+  namespace           = kubernetes_namespace.autoscaler_namespace.id
   use_existing_k8s_sa = false
   use_existing_gcp_sa = true
   name                = local.scaler_sa_name
