@@ -35,7 +35,7 @@ jobs:
       - name: 'Construct project ID'
         id: 'compute-test-uid'
         run: |-
-          echo "CI_PROJECT_ID=${CI_PREFIX}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}" >> ${GITHUB_ENV}
+          echo "CI_PROJECT_ID=${CI_PREFIX}-${GITHUB_SHA::7}-${GITHUB_RUN_ATTEMPT}" >> ${GITHUB_ENV}
 
       - name: 'Create a project'
         run: |-
