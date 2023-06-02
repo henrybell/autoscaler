@@ -1,0 +1,50 @@
+name: Test the Spanner Autoscaler
+
+on:
+  push:
+    branches:
+      - henrybell-ci-test-initial
+
+env:
+  CI_PREFIX: 'spanner-autoscaler'
+
+jobs:
+  test:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@v3'
+
+      - name: 'Google auth'
+        id: 'auth'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
+
+      - name: 'Set up Cloud SDK'
+        id: 'gcloud-setup'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          project_id: '${{ secrets.WIF_PROVIDER_PROJECT }}'
+
+      - name: 'Construct project ID'
+        id: 'compute-test-uid'
+        run: |-
+          echo "CI_PROJECT_ID=${CI_PREFIX}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}" >> ${GITHUB_ENV}
+
+      - name: 'Create a project'
+        run: |-
+          gcloud projects create ${CI_PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
+
+      - name: 'Sleep 20'
+        run: |-
+          sleep 20
+
+      - name: 'Delete a project'
+        run: |-
+          gcloud projects delete ${CI_PROJECT_ID} --quiet
