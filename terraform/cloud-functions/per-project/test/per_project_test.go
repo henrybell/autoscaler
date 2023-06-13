@@ -19,6 +19,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	schedulerpb "cloud.google.com/go/scheduler/apiv1beta1/schedulerpb"
 	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
 	instancepb "cloud.google.com/go/spanner/admin/instance/apiv1/instancepb"
+	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	logger "github.com/gruntwork-io/terratest/modules/logger"
 	retry "github.com/gruntwork-io/terratest/modules/retry"
@@ -36,18 +38,59 @@ import (
 )
 
 const (
-	preScalingProcessingUnits   = 100
-	postScalingProcessingUnits  = 200
-	spannerTestInstanceTfOutput = "spanner_test_instance_name"
-	schedulerJobTfOutput        = "scheduler_job_id"
 	projectId                   = "placeholder"
 	region                      = "us-central1"
 	zone                        = "us-central1-a"
+	spannerTestInstanceTfOutput = "spanner_test_instance_name"
+	schedulerJobTfOutput        = "scheduler_job_id"
+	preScalingProcessingUnits   = 100
+	postScalingProcessingUnits  = 200
 )
 
+func setAutoscalerConfigMinProcessingUnits(t *testing.T, schedulerClient *scheduler.CloudSchedulerClient, schedulerJobId string) {
+
+	ctx := context.Background()
+
+	schedulerJobReq := &schedulerpb.GetJobRequest{
+		Name: schedulerJobId,
+	}
+	assert.NotNil(t, schedulerJobReq)
+	schedulerJob, err := schedulerClient.GetJob(ctx, schedulerJobReq)
+	assert.Nil(t, err)
+	assert.NotNil(t, schedulerJob)
+
+	// Construct the new body
+	schedulerJobBody := string(schedulerJob.GetPubsubTarget().GetData())
+	updateTemplate := "\"minSize\":%d,"
+	oldToken := fmt.Sprintf(updateTemplate, preScalingProcessingUnits)
+	newToken := fmt.Sprintf(updateTemplate, postScalingProcessingUnits)
+	schedulerJobBodyUpdate := strings.Replace(schedulerJobBody, oldToken, newToken, 1)
+
+	updateJobRequest := &schedulerpb.UpdateJobRequest{
+		Job: &schedulerpb.Job{
+			Name: schedulerJob.Name,
+			Target: &schedulerpb.Job_PubsubTarget{
+				PubsubTarget: &schedulerpb.PubsubTarget{
+					Data: []byte(schedulerJobBodyUpdate),
+				},
+			},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{
+			Paths: []string{"pubsub_target.data"},
+		},
+	}
+	_, err = schedulerClient.UpdateJob(ctx, updateJobRequest)
+	if err != nil {
+		logger.Log(t, err)
+		t.Fatal()
+	}
+}
+
 func waitForSpannerProcessingUnits(t *testing.T, instanceAdmin *instance.InstanceAdminClient, instanceId string, targetProcessingUnits int32, retries int, sleepBetweenRetries time.Duration) {
+
 	ctx := context.Background()
 	status := fmt.Sprintf("Wait for instance to reach %d (PUs)...", targetProcessingUnits)
+
 	message := retry.DoWithRetry(
 		t,
 		status,
@@ -112,32 +155,26 @@ func TestPerProjectEndToEndDeployment(t *testing.T) {
 		terraformOptions := test_structure.LoadTerraformOptions(t, terraformDir)
 		ctx := context.Background()
 
-		// Create Spanner Admin client
 		spannerTestInstanceName := terraform.Output(t, terraformOptions, spannerTestInstanceTfOutput)
 		instanceAdmin, err := instance.NewInstanceAdminClient(ctx)
 		assert.Nil(t, err)
 		assert.NotNil(t, instanceAdmin)
 		defer instanceAdmin.Close()
 
-		// Create Scheduler client
 		schedulerJobId := terraform.Output(t, terraformOptions, schedulerJobTfOutput)
 		schedulerClient, err := scheduler.NewCloudSchedulerClient(ctx)
 		assert.Nil(t, err)
 		assert.NotNil(t, schedulerClient)
 		defer schedulerClient.Close()
 
-		// Get Scheduler job
-		schedulerJobReq := &schedulerpb.GetJobRequest{
-			Name: schedulerJobId,
-		}
-		schedulerJob, err := schedulerClient.GetJob(ctx, schedulerJobReq)
-		assert.Nil(t, err)
-		assert.NotNil(t, schedulerJob)
-
-		// Wait for Spanner to report initial processing units
+		// Wait up to a minute for Spanner to report initial processing units
 		spannerTestInstanceId := fmt.Sprintf("projects/%s/instances/%s", projectId, spannerTestInstanceName)
-		waitForSpannerProcessingUnits(t, instanceAdmin, spannerTestInstanceId, preScalingProcessingUnits, 10, time.Second*10)
+		waitForSpannerProcessingUnits(t, instanceAdmin, spannerTestInstanceId, preScalingProcessingUnits, 6, time.Second*10)
 
-		//fmt.Printf("%#v \n", schedulerJob)
+		// Update the autoscaler config with a new minimum number of processing units
+		setAutoscalerConfigMinProcessingUnits(t, schedulerClient, schedulerJobId)
+
+		// Wait up to five minutes for Spanner to report final processing units
+		waitForSpannerProcessingUnits(t, instanceAdmin, spannerTestInstanceId, postScalingProcessingUnits, 5*6, time.Second*10)
 	})
 }
