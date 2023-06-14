@@ -1,3 +1,5 @@
+//go:build e2e
+
 /**
  * Copyright 2023 Google LLC
  *
@@ -18,8 +20,9 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
+	"strconv"
 	"testing"
 	"time"
 
@@ -34,23 +37,20 @@ import (
 	terraform "github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 
+	envconfig "github.com/sethvargo/go-envconfig"
 	assert "github.com/stretchr/testify/assert"
 )
 
-const (
-	projectId                   = "placeholder"
-	region                      = "us-central1"
-	zone                        = "us-central1-a"
-	spannerTestInstanceTfOutput = "spanner_test_instance_name"
-	schedulerJobTfOutput        = "scheduler_job_id"
-	preScalingProcessingUnits   = 100
-	postScalingProcessingUnits  = 200
-)
+type TestConfig struct {
+	ProjectId            string `env:"PROJECT_ID,required"`
+	Region               string `env:"REGION,default=us-central1"`
+	Zone                 string `env:"ZONE,default=us-central1-a"`
+	TerraformSpannerTest bool   `env:"TERRAFORM_SPANNER_TEST,default=true"`
+}
 
-func setAutoscalerConfigMinProcessingUnits(t *testing.T, schedulerClient *scheduler.CloudSchedulerClient, schedulerJobId string) {
+func setAutoscalerConfigMinProcessingUnits(t *testing.T, schedulerClient *scheduler.CloudSchedulerClient, schedulerJobId string, units int) {
 
 	ctx := context.Background()
-
 	schedulerJobReq := &schedulerpb.GetJobRequest{
 		Name: schedulerJobId,
 	}
@@ -59,12 +59,20 @@ func setAutoscalerConfigMinProcessingUnits(t *testing.T, schedulerClient *schedu
 	assert.Nil(t, err)
 	assert.NotNil(t, schedulerJob)
 
-	// Construct the new body
-	schedulerJobBody := string(schedulerJob.GetPubsubTarget().GetData())
-	updateTemplate := "\"minSize\":%d,"
-	oldToken := fmt.Sprintf(updateTemplate, preScalingProcessingUnits)
-	newToken := fmt.Sprintf(updateTemplate, postScalingProcessingUnits)
-	schedulerJobBodyUpdate := strings.Replace(schedulerJobBody, oldToken, newToken, 1)
+	var schedulerJobBody []map[string]any
+	schedulerJobBodyRaw := string(schedulerJob.GetPubsubTarget().GetData())
+	err = json.Unmarshal([]byte(schedulerJobBodyRaw), &schedulerJobBody)
+	if err != nil {
+		logger.Log(t, err)
+		t.Fatal()
+	}
+
+	schedulerJobBody[0]["minSize"] = strconv.Itoa(units)
+	schedulerJobBodyUpdate, err := json.Marshal(schedulerJobBody)
+	if err != nil {
+		logger.Log(t, err)
+		t.Fatal()
+	}
 
 	updateJobRequest := &schedulerpb.UpdateJobRequest{
 		Job: &schedulerpb.Job{
@@ -79,6 +87,7 @@ func setAutoscalerConfigMinProcessingUnits(t *testing.T, schedulerClient *schedu
 			Paths: []string{"pubsub_target.data"},
 		},
 	}
+
 	_, err = schedulerClient.UpdateJob(ctx, updateJobRequest)
 	if err != nil {
 		logger.Log(t, err)
@@ -115,17 +124,34 @@ func waitForSpannerProcessingUnits(t *testing.T, instanceAdmin *instance.Instanc
 
 func TestPerProjectEndToEndDeployment(t *testing.T) {
 
+	const (
+		schedulerJobTfOutput                  = "scheduler_job_id"
+		spannerTestInstanceTfOutput           = "spanner_test_instance_name"
+		terraformSpannerTestProcessingUnits   = 100
+		terraformSpannerTargetProcessingUnits = 200
+	)
+
+	var config TestConfig
+
+	ctx := context.Background()
+	err := envconfig.Process(ctx, &config)
+	if err != nil {
+		logger.Log(t, "There was an error processing the supplied environment variables:")
+		logger.Log(t, err)
+		t.Fatal()
+	}
+
 	terraformDir := "../"
 
 	test_structure.RunTestStage(t, "setup", func() {
 		terraformOptions := &terraform.Options{
 			TerraformDir: terraformDir,
 			Vars: map[string]interface{}{
-				"project_id":             projectId,
-				"region":                 region,
-				"zone":                   zone,
-				"terraform_spanner_test": "true",
-				"terraform_spanner_test_processing_units": preScalingProcessingUnits,
+				"project_id":             config.ProjectId,
+				"region":                 config.Region,
+				"zone":                   config.Zone,
+				"terraform_spanner_test": config.TerraformSpannerTest,
+				"terraform_spanner_test_processing_units": terraformSpannerTestProcessingUnits,
 			},
 		}
 
@@ -140,7 +166,7 @@ func TestPerProjectEndToEndDeployment(t *testing.T) {
 
 	test_structure.RunTestStage(t, "import", func() {
 		terraformOptions := test_structure.LoadTerraformOptions(t, terraformDir)
-		terraformArgs := []string{"module.scheduler.google_app_engine_application.app", projectId}
+		terraformArgs := []string{"module.scheduler.google_app_engine_application.app", config.ProjectId}
 		terraformArgsFormatted := append(terraform.FormatArgs(terraformOptions, "-input=false"), terraformArgs...)
 		terraformCommand := append([]string{"import"}, terraformArgsFormatted...)
 		terraform.RunTerraformCommand(t, terraformOptions, terraformCommand...)
@@ -168,13 +194,13 @@ func TestPerProjectEndToEndDeployment(t *testing.T) {
 		defer schedulerClient.Close()
 
 		// Wait up to a minute for Spanner to report initial processing units
-		spannerTestInstanceId := fmt.Sprintf("projects/%s/instances/%s", projectId, spannerTestInstanceName)
-		waitForSpannerProcessingUnits(t, instanceAdmin, spannerTestInstanceId, preScalingProcessingUnits, 6, time.Second*10)
+		spannerTestInstanceId := fmt.Sprintf("projects/%s/instances/%s", config.ProjectId, spannerTestInstanceName)
+		waitForSpannerProcessingUnits(t, instanceAdmin, spannerTestInstanceId, terraformSpannerTestProcessingUnits, 6, time.Second*10)
 
 		// Update the autoscaler config with a new minimum number of processing units
-		setAutoscalerConfigMinProcessingUnits(t, schedulerClient, schedulerJobId)
+		setAutoscalerConfigMinProcessingUnits(t, schedulerClient, schedulerJobId, terraformSpannerTargetProcessingUnits)
 
 		// Wait up to five minutes for Spanner to report final processing units
-		waitForSpannerProcessingUnits(t, instanceAdmin, spannerTestInstanceId, postScalingProcessingUnits, 5*6, time.Second*10)
+		waitForSpannerProcessingUnits(t, instanceAdmin, spannerTestInstanceId, terraformSpannerTargetProcessingUnits, 5*6, time.Second*10)
 	})
 }
