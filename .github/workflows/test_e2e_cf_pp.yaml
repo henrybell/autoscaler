@@ -55,25 +55,22 @@ jobs:
         run: |-
           gcloud projects create ${PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
 
-      - name: 'Set current project'
-        run: |-
-          gcloud config set project ${PROJECT_ID}
-
       - name: 'Enable all required APIs'
         run: |-
-          gcloud services enable iam.googleapis.com \
+          gcloud services enable --project ${PROJECT_ID}
              appengine.googleapis.com \
              cloudbuild.googleapis.com \
              cloudfunctions.googleapis.com \
              cloudresourcemanager.googleapis.com \
              cloudscheduler.googleapis.com \
              firestore.googleapis.com \
+             iam.googleapis.com \
              pubsub.googleapis.com \
              spanner.googleapis.com
 
       - name: 'Enable App Engine'
         run: |-
-          gcloud app create --region=us-central
+          gcloud app create --project ${PROJECT_ID} --region=us-central
 
       - name: 'Run the E2E test'
         run: |-
