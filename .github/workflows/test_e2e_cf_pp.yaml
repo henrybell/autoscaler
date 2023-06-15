@@ -55,6 +55,10 @@ jobs:
         run: |-
           gcloud projects create ${PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
 
+      - name: 'Set current project'
+        run: |-
+          gcloud config set project ${PROJECT_ID}
+
       - name: 'Enable all required APIs'
         run: |-
           gcloud services enable iam.googleapis.com \
