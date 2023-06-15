@@ -57,7 +57,7 @@ jobs:
 
       - name: 'Enable all required APIs'
         run: |-
-          gcloud services enable --project ${PROJECT_ID}
+          gcloud services enable --project ${PROJECT_ID} \
              appengine.googleapis.com \
              cloudbuild.googleapis.com \
              cloudfunctions.googleapis.com \
