@@ -40,25 +40,31 @@ jobs:
           workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
           service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
 
-      - name: 'Set up Cloud SDK'
-        id: 'gcloud-setup'
-        uses: 'google-github-actions/setup-gcloud@v1'
-        with:
-          project_id: '${{ secrets.WIF_PROVIDER_PROJECT }}'
-          install_components: 'beta'
-
       - name: 'Construct project ID'
         id: 'compute-test-uid'
         run: |-
           echo "PROJECT_ID=${CI_PREFIX}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}" >> ${GITHUB_ENV}
 
+      - name: 'Set up Cloud SDK for management'
+        id: 'gcloud-setup'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          project_id: '${{ env.WIF_PROVIDER_PROJECT }}'
+
       - name: 'Create a project'
         run: |-
           gcloud projects create ${PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
 
+      - name: 'Set up Cloud SDK for CI'
+        id: 'gcloud-setup'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          project_id: '${{ env.PROJECT_ID }}'
+          install_components: 'beta'
+
       - name: 'Enable billing'
         run: |-
-          gcloud services enable --project ${PROJECT_ID} cloudbilling.googleapis.com && sleep 10
+          gcloud services enable cloudbilling.googleapis.com && sleep 10
 
       - name: 'Configure billing'
         run: |-
@@ -79,7 +85,7 @@ jobs:
 
       - name: 'Enable App Engine'
         run: |-
-          gcloud app create --project ${PROJECT_ID} --region=us-central
+          gcloud app create --region=us-central
 
       - name: 'Run the E2E test'
         run: |-
