@@ -46,7 +46,7 @@ jobs:
           echo "PROJECT_ID=${CI_PREFIX}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}" >> ${GITHUB_ENV}
 
       - name: 'Set up Cloud SDK for management'
-        id: 'gcloud-setup'
+        id: 'gcloud-setup-mgmt'
         uses: 'google-github-actions/setup-gcloud@v1'
         with:
           project_id: '${{ env.WIF_PROVIDER_PROJECT }}'
@@ -56,7 +56,7 @@ jobs:
           gcloud projects create ${PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
 
       - name: 'Set up Cloud SDK for CI'
-        id: 'gcloud-setup'
+        id: 'gcloud-setup-ci'
         uses: 'google-github-actions/setup-gcloud@v1'
         with:
           project_id: '${{ env.PROJECT_ID }}'
