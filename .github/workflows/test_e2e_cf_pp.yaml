@@ -39,6 +39,7 @@ jobs:
         with:
           workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
           service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
+          export_environment_variables: false
 
       - name: 'Construct project ID'
         id: 'compute-test-uid'
