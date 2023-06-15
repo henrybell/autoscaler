@@ -18,8 +18,3 @@ output "scheduler_job_id" {
   value       = module.scheduler.scheduler_job_id
   description = "ID of the Scheduler job"
 }
-
-output "spanner_test_instance_name" {
-  value       = module.spanner.spanner_test_instance_name
-  description = "Name of the Spanner instance"
-}
