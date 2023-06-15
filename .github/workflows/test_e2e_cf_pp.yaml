@@ -20,7 +20,7 @@ on:
       - henrybell-test-gha
 
 env:
-  CI_PREFIX: 'spanner-autoscaler'
+  CI_PREFIX: 'spanner-as'
 
 jobs:
   test:
