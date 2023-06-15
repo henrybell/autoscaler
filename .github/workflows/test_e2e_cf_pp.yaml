@@ -45,6 +45,7 @@ jobs:
         uses: 'google-github-actions/setup-gcloud@v1'
         with:
           project_id: '${{ secrets.WIF_PROVIDER_PROJECT }}'
+          install_components: 'beta'
 
       - name: 'Construct project ID'
         id: 'compute-test-uid'
