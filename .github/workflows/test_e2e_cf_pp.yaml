@@ -45,26 +45,20 @@ jobs:
         run: |-
           echo "PROJECT_ID=${CI_PREFIX}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}" >> ${GITHUB_ENV}
 
-      - name: 'Set up Cloud SDK for management'
-        id: 'gcloud-setup-mgmt'
-        uses: 'google-github-actions/setup-gcloud@v1'
-        with:
-          project_id: '${{ env.WIF_PROVIDER_PROJECT }}'
-
-      - name: 'Create a project'
-        run: |-
-          gcloud projects create ${PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
-
-      - name: 'Set up Cloud SDK for CI'
-        id: 'gcloud-setup-ci'
+      - name: 'Set up Cloud SDK'
+        id: 'gcloud-setup'
         uses: 'google-github-actions/setup-gcloud@v1'
         with:
           project_id: '${{ env.PROJECT_ID }}'
           install_components: 'beta'
 
+      - name: 'Create a project'
+        run: |-
+          gcloud projects create ${PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
+
       - name: 'Enable billing'
         run: |-
-          gcloud services enable cloudbilling.googleapis.com --project ${PROJECT_ID} && sleep 10
+          gcloud services enable cloudbilling.googleapis.com --project ${PROJECT_ID} && sleep 30
 
       - name: 'Configure billing'
         run: |-
