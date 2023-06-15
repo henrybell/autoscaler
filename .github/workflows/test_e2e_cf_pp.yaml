@@ -56,6 +56,10 @@ jobs:
         run: |-
           gcloud projects create ${PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
 
+      - name: 'Enable billing'
+        run: |-
+          gcloud services enable --project ${PROJECT_ID} cloudbilling.googleapis.com && sleep 10
+
       - name: 'Configure billing'
         run: |-
           gcloud beta billing projects link ${PROJECT_ID} --billing-account=${{ secrets.CI_BILLING }}
