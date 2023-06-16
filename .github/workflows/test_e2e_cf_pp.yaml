@@ -81,11 +81,11 @@ jobs:
              firestore.googleapis.com \
              iam.googleapis.com \
              pubsub.googleapis.com \
-             spanner.googleapis.com
+             spanner.googleapis.com && sleep 10
 
       - name: 'Enable App Engine'
         run: |-
-          gcloud app create --region=us-central --project ${PROJECT_ID}
+          gcloud app create --region=us-central --project ${PROJECT_ID} && env
 
       - name: 'Run the E2E test'
         run: |-
