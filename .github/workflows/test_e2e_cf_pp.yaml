@@ -45,6 +45,11 @@ jobs:
           workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
           service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
           project_id: '${{ env.PROJECT_ID }}'
+            
+      - name: 'Env dump'
+        id: 'dump'
+        run: |-
+          gcloud config list && echo ${CLOUDSDK_CORE_PROJECT}
 
       - name: 'Set up Cloud SDK'
         id: 'gcloud-setup'
