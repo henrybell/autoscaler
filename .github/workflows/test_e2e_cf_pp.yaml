@@ -46,11 +46,6 @@ jobs:
           service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
           project_id: '${{ env.PROJECT_ID }}'
             
-      - name: 'Env dump'
-        id: 'dump'
-        run: |-
-          gcloud config list && echo ${CLOUDSDK_CORE_PROJECT}
-
       - name: 'Set up Cloud SDK'
         id: 'gcloud-setup'
         uses: 'google-github-actions/setup-gcloud@v1'
@@ -64,7 +59,7 @@ jobs:
 
       - name: 'Enable billing'
         run: |-
-          gcloud services enable cloudbilling.googleapis.com --project ${PROJECT_ID} && sleep 30
+          gcloud services enable cloudbilling.googleapis.com --project ${PROJECT_ID} && sleep 10
 
       - name: 'Configure billing'
         run: |-
@@ -85,12 +80,14 @@ jobs:
 
       - name: 'Enable App Engine'
         run: |-
-          gcloud app create --region=us-central --project ${PROJECT_ID} && env
+          gcloud app create --region=us-central --project ${PROJECT_ID}
 
       - name: 'Run the E2E test'
         run: |-
-          cd terraform/cloud-functions/per-project/test && make test-e2e
+          cd terraform/cloud-functions/per-project/test && export SKIP_teardown && make test-e2e
 
-      - name: 'Delete a project'
-        run: |-
-          gcloud projects delete ${PROJECT_ID} --quiet
+#      - name: 'Delete project'
+#        if:
+#        run: |-
+#          gcloud projects delete ${PROJECT_ID} --quiet
+
