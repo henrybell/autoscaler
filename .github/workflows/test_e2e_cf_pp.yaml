@@ -88,10 +88,9 @@ jobs:
 
       - name: 'Run the E2E test'
         run: |-
-          cd terraform/cloud-functions/per-project/test && export SKIP_teardown && make test-e2e
+          cd terraform/cloud-functions/per-project/test && make test-e2e
 
-#      - name: 'Delete project'
-#        if:
-#        run: |-
-#          gcloud projects delete ${PROJECT_ID} --quiet
-
+      - name: 'Delete project'
+        if: always()
+        run: |-
+          gcloud projects delete ${PROJECT_ID} --quiet
