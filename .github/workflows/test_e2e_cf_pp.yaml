@@ -84,7 +84,7 @@ jobs:
 
       - name: 'Enable Firestore'
         run: |-
-          gcloud firestore databases update --type=firestore-native --region=us-central --project ${PROJECT_ID}
+          gcloud firestore databases update --type=firestore-native --project ${PROJECT_ID}
 
       - name: 'Run the E2E test'
         run: |-
