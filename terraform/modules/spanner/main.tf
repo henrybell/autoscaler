@@ -86,7 +86,7 @@ resource "google_spanner_instance_iam_member" "scaler_update_capacity_iam" {
   role     = google_project_iam_custom_role.capacity_manager_iam_role.name
   project  = var.project_id
   member   = "serviceAccount:${var.scaler_sa_email}"
-  
+
   depends_on = [google_spanner_instance.main]
 }
 
