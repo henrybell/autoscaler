@@ -76,7 +76,7 @@ jobs:
              firestore.googleapis.com \
              iam.googleapis.com \
              pubsub.googleapis.com \
-             spanner.googleapis.com && sleep 10
+             spanner.googleapis.com
 
       - name: 'Enable App Engine'
         run: |-
