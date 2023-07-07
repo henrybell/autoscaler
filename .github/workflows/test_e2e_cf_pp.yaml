@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Test end-to-end Cloud Functions per-project
+name: Test Cloud Functions E2E (per-project)
 
 on:
   push:
     branches:
-      - henrybell-test-gha
+      - master
 
 env:
   CI_PREFIX: 'spanner-as'
@@ -31,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout'
+        id: 'checkout'
         uses: 'actions/checkout@v3'
 
       - name: 'Construct project ID'
@@ -54,18 +55,22 @@ jobs:
           install_components: 'beta'
 
       - name: 'Create a project'
+        id: 'create-project'
         run: |-
           gcloud projects create ${PROJECT_ID} --folder ${{ secrets.CI_ENV_FOLDER_NUMBER }}
 
       - name: 'Enable billing'
+        id: 'enable-billing'
         run: |-
           gcloud services enable cloudbilling.googleapis.com --project ${PROJECT_ID} && sleep 10
 
       - name: 'Configure billing'
+        id: 'configure-billing'
         run: |-
           gcloud beta billing projects link ${PROJECT_ID} --billing-account=${{ secrets.CI_BILLING }}
 
       - name: 'Enable all required APIs'
+        id: 'enable-apis'
         run: |-
           gcloud services enable --project ${PROJECT_ID} \
              appengine.googleapis.com \
@@ -79,18 +84,22 @@ jobs:
              spanner.googleapis.com
 
       - name: 'Enable App Engine'
+        id: 'enable-app-engine'
         run: |-
           gcloud app create --region=us-central --project ${PROJECT_ID}
 
       - name: 'Enable Firestore'
+        id: 'enable-firestore'
         run: |-
           gcloud firestore databases update --type=firestore-native --project ${PROJECT_ID}
 
       - name: 'Run the E2E test'
+        id: 'run-e2e-test'
         run: |-
           cd terraform/cloud-functions/per-project/test && make test-e2e
 
       - name: 'Delete project'
+        id: 'delete-project'
         if: always()
         run: |-
           gcloud projects delete ${PROJECT_ID} --quiet
