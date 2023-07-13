@@ -17,7 +17,7 @@ name: Test Cloud Functions E2E (per-project)
 on:
   push:
     branches:
-      - master
+      - henrybell-gha-firestore-debug
 
 env:
   CI_PREFIX: 'spanner-as'
@@ -86,7 +86,7 @@ jobs:
       - name: 'Enable App Engine'
         id: 'enable-app-engine'
         run: |-
-          gcloud app create --region=us-central --project ${PROJECT_ID}
+          gcloud app create --region=us-central --project ${PROJECT_ID} && sleep 10
 
       - name: 'Enable Firestore'
         id: 'enable-firestore'
