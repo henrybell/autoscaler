@@ -1,0 +1,95 @@
+---
+updates:
+  # Github-actions dependancies
+  - directory: "/"
+    package-ecosystem: "github-actions"
+    schedule:
+      interval: "weekly"
+
+  # NPM dependancies -- only prompt to update minor versions.
+  - directory: "/"
+    package-ecosystem: "npm"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - directory: "/src"
+    package-ecosystem: "npm"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - directory: "/src/autoscaler-common"
+    package-ecosystem: "npm"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - directory: "/src/forwarder"
+    package-ecosystem: "npm"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - directory: "/src/poller"
+    package-ecosystem: "npm"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - directory: "/src/poller/poller-core"
+    package-ecosystem: "npm"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - directory: "/src/scaler"
+    package-ecosystem: "npm"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - directory: "/src/scaler/scaler-core"
+    package-ecosystem: "npm"
+    schedule:
+      interval: "weekly"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Docker dependencies
+  - directory: "/src"
+    package-ecosystem: "docker"
+    schedule:
+      interval: "weekly"
+
+  - directory: "/src/poller"
+    package-ecosystem: "docker"
+    schedule:
+      interval: "weekly"
+
+  - directory: "/src/scaler"
+    package-ecosystem: "docker"
+    schedule:
+      interval: "weekly"
+
+  - directory: "/src/forwarder"
+    package-ecosystem: "docker"
+    schedule:
+      interval: "weekly"
+
+version: 2
+...
